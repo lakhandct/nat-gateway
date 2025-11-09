@@ -38,7 +38,7 @@ THE SOFTWARE.
 Senior Enterprise Cloud Consultant / Solution Architect  
 [Akamai Technologies – Linode Compute Division]  
 🌐 GitHub: [github.com/sandipgangdhar](https://github.com/sandipgangdhar)  
-💼 LinkedIn: [linkedin.com/in/sandipgangdhar](https://linkedin.com/in/sandipgangdhar)  
+💼 LinkedIn: [linkedin.com/in/ssandippggangdhar](https://linkedin.com/in/ssandippggangdhar)  
 
 ---
 

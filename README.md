@@ -25,22 +25,21 @@ This setup provides **automatic failover**, **stateful NAT**, and **shared publi
 - [👨‍💻 Author & Maintainer](#-author--maintainer)
 
 ---
-
 ## 📚 Documentation Index
 
 | Section | Description |
-|----------|-------------|
-| [1️⃣ Introduction / Overview & Benefits](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/features-and-advantages.md) | What this solution does and its core design principles |
-| [2️⃣ Architecture Overview Diagram](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/architecture.md) | Complete topology, packet flow, and logical architecture |
-| [3️⃣ Detailed Component Responsibilities](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/components.md) | Role of Keepalived, lelastic, nftables, and Linode IP Sharing |
-| [4️⃣ Component Interactions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/interactions.md) | Flow of control and communication between components |
-| [5️⃣ Failure Scenarios & Recovery Behavior](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/failures.md) | Complete fault-injection and recovery matrix |
-| [6️⃣ Comparison with Cloud NAT Solutions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/comparison.md) | AWS, Azure, and GCP NAT comparisons |
-| [7️⃣ Deployment Guide / Setup Instructions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/deployment.md) | Terraform + Ansible step-by-step setup |
-| [8️⃣ Performance Benchmark & Test Results](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/performance.md) | Latency, throughput, and failover timing |
-| [9️⃣ Repository Structure](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/repository.md) | Directory layout and contents summary |
-| [🔟 License / Author / Contributions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/license.md) | Author credits and contribution info |
-
+|----------|--------------|
+| [1️⃣ Introduction / Overview](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/introduction.md) | What this solution does and its core design principles |
+| [2️⃣ Features & Advantages](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/features-and-advantages.md) | Key highlights, unique advantages, and architectural value |
+| [3️⃣ Architecture Overview Diagram](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/architecture.md) | Complete topology, packet flow, and logical architecture |
+| [4️⃣ Detailed Component Responsibilities](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/components.md) | Role of Keepalived, lelastic, nftables, and Linode IP Sharing |
+| [5️⃣ Component Interactions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/interactions.md) | Flow of control and communication between components |
+| [6️⃣ Failure Scenarios & Recovery Behavior](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/failures.md) | Complete fault-injection and recovery matrix |
+| [7️⃣ Comparison with Cloud NAT Solutions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/comparison.md) | AWS, Azure, and GCP NAT comparisons |
+| [8️⃣ Deployment Guide / Setup Instructions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/deployment.md) | Terraform + Ansible step-by-step setup |
+| [9️⃣ Performance Benchmark & Test Results](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/performance.md) | Latency, throughput, and failover timing |
+| [🔟 Repository Structure](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/repository.md) | Directory layout and contents summary |
+| [🏷️ License / Author / Contributions](https://github.com/sandipgangdhar/linode-nat-gateway/blob/feature/nat-gateway/docs/license.md) | Author credits and contribution info |
 ---
 
 ## 🚀 Quick Summary
@@ -110,7 +109,7 @@ ansible-playbook -i inventory.ini site.yml -t validate
 Senior Enterprise Cloud Consultant / Solution Architect  
 **Akamai Connected Cloud (Linode)**  
 
-🔗 [LinkedIn Profile](https://linkedin.com/in/sandipgangdhar)  
+🔗 [LinkedIn Profile](https://linkedin.com/in/ssandippggangdhar)  
 📦 GitHub: [sandipgangdhar/linode-nat-gateway](https://github.com/sandipgangdhar/linode-nat-gateway)
 
 ---

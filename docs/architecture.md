@@ -33,21 +33,33 @@ At its core, this setup uses **two Linode instances** (`nat-a` and `nat-b`) that
 ## 🖥️ Network Diagram
 
 ```mermaid
-flowchart LR
-  subgraph VLAN [Private VLAN 192.168.1.0/24]
-    P1[Private Instance(s)\nDefault GW: 192.168.1.1]
+graph LR
+  %% === Linode NAT Gateway (HA) – Network Diagram ===
+  %% Use <br/> for line breaks in labels (GitHub Mermaid)
+
+  subgraph VPC["Linode VPC (192.168.1.0/24)"]
+    P1[Private Instance(s)<br/>Default GW: 192.168.1.1]
+    P2[Private Instance(s)<br/>Default GW: 192.168.1.1]
+
+    VIP[VIP: 192.168.1.1/24]
+
+    A[NAT-A<br/>eth0: Public<br/>eth1: 192.168.1.3<br/>State: MASTER]
+    B[NAT-B<br/>eth0: Public<br/>eth1: 192.168.1.4<br/>State: BACKUP]
   end
 
-  subgraph NAT-HA [NAT HA Pair]
-    A[nat-a (MASTER)] --- B[nat-b (BACKUP)]
-    A -- VRRP: VIP 192.168.1.1/24 --> B
-    A -- Shared FIP 172.236.95.221 --> Internet
-    B -- Takes over FIP on failover --> Internet
+  subgraph PUBLIC["Internet / Public"]
+    FIP[Shared FIP: 172.236.95.221]
   end
 
-  P1 -->|Default route| A
-  A -->|SNAT to FIP| Internet[(Internet)]
-  B -->|SNAT to FIP on failover| Internet
+  %% Paths
+  P1 --> VIP
+  P2 --> VIP
+
+  VIP --> A
+  VIP -. failover .-> B
+
+  A --> FIP
+  B -. standby .-> FIP
 ```
 
 ---
