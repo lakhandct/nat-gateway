@@ -33,33 +33,37 @@ At its core, this setup uses **two Linode instances** (`nat-a` and `nat-b`) that
 ## 🖥️ Network Diagram
 
 ```mermaid
-graph LR
-  %% === Linode NAT Gateway (HA) – Network Diagram ===
-  %% Use <br/> for line breaks in labels (GitHub Mermaid)
+flowchart LR
+  %% Title: NAT HA with VRRP + nftables + lelastic (BGP)
+  %% NOTE: Use \n for new lines in labels; GitHub Mermaid rejects <br/>
 
-  subgraph VPC["Linode VPC (192.168.1.0/24)"]
-    P1[Private Instance(s)<br/>Default GW: 192.168.1.1]
-    P2[Private Instance(s)<br/>Default GW: 192.168.1.1]
-
-    VIP[VIP: 192.168.1.1/24]
-
-    A[NAT-A<br/>eth0: Public<br/>eth1: 192.168.1.3<br/>State: MASTER]
-    B[NAT-B<br/>eth0: Public<br/>eth1: 192.168.1.4<br/>State: BACKUP]
+  subgraph VPC_VLAN["Private VLAN"]
+    P1[Private Instance(s)\nDefault GW: 192.168.1.1]
   end
 
-  subgraph PUBLIC["Internet / Public"]
-    FIP[Shared FIP: 172.236.95.221]
+  subgraph NAT_HA["NAT HA Pair"]
+    A[NAT-A\neth0: Public\neth1: 192.168.1.3]
+    B[NAT-B\neth0: Public\neth1: 192.168.1.4]
+    VIP[(VIP 192.168.1.1)]
+    A <-- VRRP --> B
+    VIP --- A
   end
 
-  %% Paths
-  P1 --> VIP
-  P2 --> VIP
+  subgraph Control["Control Plane Hints"]
+    L[lelastic\n(BGP announce FIP route)]
+  end
 
-  VIP --> A
-  VIP -. failover .-> B
+  Internet[(Internet/Fabric)]
 
-  A --> FIP
-  B -. standby .-> FIP
+  %% Data path
+  P1 -->|Default route| VIP
+  A -->|SNAT to FIP 172.236.95.221| Internet
+  B -->|SNAT to FIP 172.236.95.221| Internet
+
+  %% Control hints (dashed)
+  L -. announces .-> Internet
+  L -. manages .-> A
+  L -. manages .-> B
 ```
 
 ---
