@@ -22,9 +22,9 @@ locals {
     - systemctl enable keepalived || true
     - systemctl enable nftables || true
   ssh_authorized_keys:
-  %{ for k in var.ssh_authorized_keys ~}
+  %{for k in var.ssh_authorized_keys~}
     - ${k}
-  %{ endfor ~}
+  %{endfor~}
   EOF
 }
 
@@ -45,7 +45,7 @@ resource "linode_instance" "nat_a" {
   interface {
     purpose      = "vlan"
     label        = var.vlan_label
-    ipam_address = var.nat_a_vlan_ip  # e.g., 192.168.1.3/24
+    ipam_address = var.nat_a_vlan_ip # e.g., 192.168.1.3/24
   }
 
   tags = ["nat", "gateway", "ha", "primary"]
@@ -72,7 +72,7 @@ resource "linode_instance" "nat_b" {
   interface {
     purpose      = "vlan"
     label        = var.vlan_label
-    ipam_address = var.nat_b_vlan_ip  # e.g., 192.168.1.4/24
+    ipam_address = var.nat_b_vlan_ip # e.g., 192.168.1.4/24
   }
 
   tags = ["nat", "gateway", "ha", "backup"]

@@ -1,4 +1,4 @@
-variable "linode_token" { 
+variable "linode_token" {
   type = string
 }
 
@@ -7,18 +7,18 @@ variable "region" {
   default = "in-maa"
 }
 
-variable "image" { 
-  type = string  
+variable "image" {
+  type    = string
   default = "linode/ubuntu24.04"
 }
 
-variable "type" { 
-  type = string
+variable "type" {
+  type    = string
   default = "g6-standard-2"
 }
 
 # VLAN attachment (must already exist in the same region)
-variable "vlan_label" { 
+variable "vlan_label" {
   type = string
 }
 
@@ -31,19 +31,19 @@ variable "nat_b_vlan_ip" {
 }
 
 # SSH access
-variable "ssh_authorized_keys" { 
-  type = list(string) 
+variable "ssh_authorized_keys" {
+  type = list(string)
 }
 
-variable "root_pass" { 
-  type = string  
+variable "root_pass" {
+  type    = string
   default = null
 }
 
 # Naming
 variable "prefix" {
-  type = string 
-  default = "nat" 
+  type    = string
+  default = "nat"
 }
 
 variable "shared_ipv4" {
