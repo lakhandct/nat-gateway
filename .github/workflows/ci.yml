@@ -36,29 +36,32 @@ jobs:
         working-directory: terraform
         run: terraform validate -no-color
 
-      # ---------- Ansible / YAML ----------
+      # ---------- Python + Ansible toolchain (pins to compatible set) ----------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Ansible toolchain (pinned)
+      - name: Install Ansible toolchain (compatible pins)
         run: |
           python -m pip install --upgrade pip
-          pip install "ansible-core==9.6.0" "ansible-lint==24.2.0" "yamllint==1.35.1"
+          # ansible 9.6.0 bundles ansible-core 2.16.x (compatible with ansible-lint 24.2.0)
+          pip install "ansible==9.6.0" "ansible-lint==24.2.0" "yamllint==1.35.1"
           ansible --version
-          python -c "import ansible; print('ansible-core module:', ansible.__version__)"
+          python -c "import ansible; print('ansible package version:', ansible.__version__)"
 
-      - name: Ansible Lint
+      # ---------- Ansible / YAML lint ----------
+      - name: Ansible Lint (targeted)
         run: |
-          ansible-lint -v ansible/site.yml ansible/roles/nat_ha
+          ansible-lint -v \
+            ansible/site.yml \
+            ansible/roles/nat_ha
 
       - name: YAML lint (repo)
-        run: |
-          yamllint -s .
+        run: yamllint -s .
 
       # ---------- Markdown / links ----------
-      - name: Link check (lychee)
+      - name: Check links in Markdown (lychee)
         uses: lycheeverse/lychee-action@v1
         with:
           args: >-
