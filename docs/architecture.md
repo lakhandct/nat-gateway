@@ -34,23 +34,22 @@ At its core, this setup uses **two Linode instances** (`nat-a` and `nat-b`) that
 
 ```mermaid
 flowchart LR
-  %% Title: NAT HA with VRRP + nftables + lelastic (BGP)
-  %% NOTE: Use \n for new lines in labels; GitHub Mermaid rejects <br/>
+  %% GitHub-safe: use \\n for newlines, avoid parentheses in labels, and use |label| on edges
 
   subgraph VPC_VLAN["Private VLAN"]
-    P1[Private Instance(s)\nDefault GW: 192.168.1.1]
+    P1[Private Instances\\nDefault GW: 192.168.1.1]
   end
 
   subgraph NAT_HA["NAT HA Pair"]
-    A[NAT-A\neth0: Public\neth1: 192.168.1.3]
-    B[NAT-B\neth0: Public\neth1: 192.168.1.4]
-    VIP[(VIP 192.168.1.1)]
-    A <-- VRRP --> B
+    A[NAT-A\\neth0: Public\\neth1: 192.168.1.3]
+    B[NAT-B\\neth0: Public\\neth1: 192.168.1.4]
+    VIP((VIP 192.168.1.1))
+    A <-->|VRRP| B
     VIP --- A
   end
 
   subgraph Control["Control Plane Hints"]
-    L[lelastic\n(BGP announce FIP route)]
+    L[lelastic\\nBGP announce FIP route]
   end
 
   Internet[(Internet/Fabric)]
