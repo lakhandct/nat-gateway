@@ -37,28 +37,28 @@ jobs:
         run: terraform validate -no-color
 
       # ---------- Ansible / YAML ----------
-      - name: Install Ansible toolchain
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible toolchain (pinned)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            ansible ansible-lint yamllint python3-jinja2
+          python -m pip install --upgrade pip
+          pip install "ansible-core==2.19.3" "ansible-lint==24.*" "yamllint"
           ansible --version
-          ansible-lint --version
-          yamllint --version
+          python -c "import ansible; print('ansible-core module:', ansible.__version__)"
 
       - name: Ansible Lint
         run: |
-          # Lint site and role (ignore downloads, images, etc.)
-          ansible-lint -v \
-            ansible/site.yml \
-            ansible/roles/nat_ha
+          ansible-lint -v ansible/site.yml ansible/roles/nat_ha
 
       - name: YAML lint (repo)
         run: |
-          yamllint -f colored .
+          yamllint -s .
 
       # ---------- Markdown / links ----------
-      - name: Install lychee (link checker)
+      - name: Link check (lychee)
         uses: lycheeverse/lychee-action@v1
         with:
           args: >-
