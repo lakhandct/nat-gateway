@@ -23,6 +23,9 @@ host_vars/*.yml
 !group_vars/*.example.yml
 !host_vars/*.example.yml
 !inventory.example.ini
+/ansible/inventory.ini
+/ansible/group_vars/nat.yml
+/ansible/group_vars/nat_*.yml
 
 # Python (if any helper scripts)
 __pycache__/
