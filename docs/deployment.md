@@ -28,140 +28,56 @@ cd linode-nat-gateway/terraform
 
 <hr />
 
-<h2>🧱 Variables &amp; Modes</h2>
-<p>The module can run in one of <strong>two modes</strong> based on <code>var.nat_pairs</code>:</p>
+<h2>🧱 Variables &amp; Logic Flow</h2>
+<p>
+The deployment no longer uses “single-pair” or “multi-pair” modes.  
+Instead, it’s <strong>fully dynamic</strong> — Terraform automatically provisions as many NAT Gateway HA pairs as you define in <code>var.nat_pairs</code>.
+</p>
+
 <ul>
-  <li>If <code>nat_pairs</code> <strong>is empty</strong> ⇒ <strong>Single Pair Mode</strong></li>
-  <li>If <code>nat_pairs</code> <strong>has items</strong> ⇒ <strong>Multi Pair Mode</strong> (single-pair inputs are ignored)</li>
+  <li>If <code>nat_pairs</code> contains <strong>one item</strong> → one NAT HA pair is created (e.g., <code>nat1-a</code>, <code>nat1-b</code>).</li>
+  <li>If <code>nat_pairs</code> contains <strong>multiple items</strong> → multiple independent HA pairs are created (e.g., <code>nat1-a/b</code>, <code>nat2-a/b</code>, <code>nat3-a/b</code>, …).</li>
 </ul>
+
+<p>There is now only <strong>one variable file</strong>: <code>terraform/terraform.tfvars</code>.  
+All configuration — from shared IPs and VLAN labels to VRRP IDs — is defined inside this file.</p>
 
 <h3>Common Variables</h3>
-<p>Defined in <code>terraform/variables.tf</code> (used in both modes unless noted):</p>
+<p>Defined in <code>terraform/variables.tf</code> (applies to all NAT pairs):</p>
 <ul>
-  <li><code>region</code> (string, required) — Linode region (e.g. <code>"in-maa"</code>)</li>
-  <li><code>image</code> (string, default <code>"linode/ubuntu24.04"</code>)</li>
-  <li><code>type</code> (string, default <code>"g6-standard-2"</code>)</li>
-  <li><code>root_pass</code> (sensitive) — required by provider (or use cloud-init SSH only)</li>
-  <li><code>inject_ssh_via_cloud_init</code> (bool, default <code>false</code>)</li>
-  <li><code>ssh_authorized_keys</code> (list(string)) — pushed via cloud-init if enabled</li>
-  <li><code>use_ip_share</code> (bool, default <code>true</code>)</li>
-  <li><code>dcid</code> (number, required when <code>use_ip_share=true</code>) — Linode DC numeric id</li>
-  <li><code>linode_token</code> (sensitive) — provider token</li>
-  <li><code>prefix</code> (string, default <code>"nat"</code>)</li>
-  <li>Placement group knobs (optional): <code>placement_group_label</code>, <code>placement_group_type</code></li>
+  <li><code>region</code> — Linode region (e.g. <code>"in-maa"</code>)</li>
+  <li><code>image</code> — base image (default <code>"linode/ubuntu24.04"</code>)</li>
+  <li><code>type</code> — Linode instance type (default <code>"g6-standard-2"</code>)</li>
+  <li><code>ssh_authorized_keys</code> — public keys for cloud-init access</li>
+  <li><code>use_ip_share</code> — enables Linode IP sharing (default <code>true</code>)</li>
+  <li><code>dcid</code> — Linode data center ID (required when IP sharing is enabled)</li>
+  <li><code>placement_group_label</code> / <code>placement_group_type</code> — optional anti-affinity grouping</li>
+  <li><code>nat_pairs</code> — list of NAT Gateway pairs (each item defines its own VLAN, shared IP, VRRP config, etc.)</li>
 </ul>
 
-<hr />
-
-<h2>🎯 Mode A — Single Pair (1 HA pair)</h2>
-<p>When <code>nat_pairs = []</code>, the following <strong>single-pair</strong> inputs are used:</p>
+<h3>Dynamic Behavior</h3>
 <ul>
-  <li><code>vlan_label</code> (string) — existing VLAN label to attach</li>
-  <li><code>nat_a_vlan_ip</code> (string CIDR) — VLAN IP for <code>nat-a</code> (e.g. <code>192.168.1.3/24</code>)</li>
-  <li><code>nat_b_vlan_ip</code> (string CIDR) — VLAN IP for <code>nat-b</code> (e.g. <code>192.168.1.4/24</code>)</li>
-  <li><code>vlan_vip</code> (string CIDR) — VRRP VIP on VLAN (e.g. <code>192.168.1.1/24</code>)</li>
-  <li><code>shared_ipv4</code> (string) — <strong>shared public IP</strong> used as SNAT/FIP (if <code>use_ip_share=true</code>)</li>
-  <li><code>anchor_linode_id</code> (number) — Linode that owns the shared IP (IP sharing anchor)</li>
-</ul>
-
-<h3>Example: <code>terraform/single-pair.tfvars</code></h3>
-<pre><code># --- common ---
-region              = "in-maa"
-root_pass           = "StrongPassword!"
-inject_ssh_via_cloud_init = true
-ssh_authorized_keys = ["ssh-ed25519 AAAA... user@host"]
-use_ip_share        = true
-dcid                = 25
-
-# --- single pair only ---
-vlan_label   = "vlan-nat"
-nat_a_vlan_ip = "192.168.1.3/24"
-nat_b_vlan_ip = "192.168.1.4/24"
-vlan_vip      = "192.168.1.1/24"
-
-# Public shared IP + anchor for IP sharing
-shared_ipv4      = "172.236.95.221"
-anchor_linode_id = 0   # set the owner Linode ID if the FIP belongs to a specific instance
-</code></pre>
-
-<h3>Deploy (Single Pair)</h3>
-<pre><code>cd terraform
-terraform init
-terraform apply -var-file=single-pair.tfvars -auto-approve
-</code></pre>
-<p><strong>Outputs:</strong> Terraform prints <code>pair_summary</code> with public &amp; VLAN IPs and the VIP.</p>
-<p>✅ Ansible inventory + group_vars are generated in <code>../ansible</code> (don’t edit).</p>
-
-<hr />
-
-<h2>🎯 Mode B — Multi Pair (Multiple HA pairs)</h2>
-<p>Set <code>nat_pairs</code> to a <strong>list of pairs</strong>. Each pair defines its own VLAN VIP, shared IP, etc.</p>
-
-<h3>Schema (per pair)</h3>
-<ul>
-  <li><code>name</code> (string) — Pair name (e.g., <code>"nat1"</code>)</li>
-  <li><code>vlan_label</code> (string) — VLAN label to attach</li>
-  <li><code>vlan_vip</code> (string CIDR) — VRRP VIP (unique per pair subnet/VIP)</li>
-  <li><code>shared_ipv4</code> (string, optional) — public IP used for SNAT/FIP for that pair</li>
-  <li><code>anchor_linode_id</code> (number, optional) — owner Linode for IP sharing</li>
-  <li><code>placement_group_label</code> (string, optional)</li>
-  <li><code>placement_group_type</code> (string, optional, default <code>"anti_affinity:local"</code>)</li>
-  <li><code>vrrp_id</code> (number) — <strong>must be unique per pair</strong> (e.g., 51, 52, 53…)</li>
-  <li><code>members</code> (list) — 2 members with:
+  <li>Each item in <code>nat_pairs</code> becomes a <strong>fully isolated HA pair</strong> (2 Linodes + VRRP).</li>
+  <li>Terraform auto-generates:
     <ul>
-      <li><code>label</code> (string) — instance label (e.g., <code>"nat1-a"</code>, <code>"nat1-b"</code>)</li>
-      <li><code>vlan_ip</code> (string CIDR) — node VLAN IP (e.g., <code>192.168.1.3/24</code>)</li>
-      <li><code>state</code> (string) — <code>"MASTER"</code> or <code>"BACKUP"</code></li>
-      <li><code>priority</code> (number) — Keepalived priority (higher = master)</li>
+      <li><code>../ansible/inventory.ini</code> — with all pairs and nodes</li>
+      <li><code>../ansible/group_vars/nat.yml</code> — common vars</li>
+      <li><code>../ansible/group_vars/nat_&lt;pair&gt;.yml</code> — per-pair vars</li>
     </ul>
   </li>
+  <li>No conditional logic or flags — the system simply reads how many <code>nat_pairs</code> exist and builds that many HA pairs.</li>
 </ul>
 
-<h3>Example: <code>terraform/multi-pair.tfvars</code></h3>
-<pre><code># --- common ---
-region              = "in-maa"
-root_pass           = "StrongPassword!"
-inject_ssh_via_cloud_init = true
-ssh_authorized_keys = ["ssh-ed25519 AAAA... user@host"]
-use_ip_share        = true
-dcid                = 25
-
-# --- multi-pair ---
-nat_pairs = [
-  {
-    name       = "nat1"
-    vlan_label = "vlan-nat"
-    vlan_vip   = "192.168.1.1/24"
-    shared_ipv4 = "172.236.95.221"
-    vrrp_id    = 51
-    members = [
-      { label = "nat1-a", vlan_ip = "192.168.1.3/24", state = "MASTER", priority = 150 },
-      { label = "nat1-b", vlan_ip = "192.168.1.4/24", state = "BACKUP", priority = 100 }
-    ]
-  },
-  {
-    name       = "nat2"
-    vlan_label = "vlan-nat"
-    vlan_vip   = "192.168.1.10/24"
-    shared_ipv4 = "172.236.95.99"
-    vrrp_id    = 52
-    members = [
-      { label = "nat2-a", vlan_ip = "192.168.1.6/24", state = "MASTER", priority = 150 },
-      { label = "nat2-b", vlan_ip = "192.168.1.7/24", state = "BACKUP", priority = 100 }
-    ]
-  }
+<h3>🧩 Example</h3>
+<p>If you define:</p>
+<pre><code>nat_pairs = [
+  { name = "nat1", ... },
+  { name = "nat2", ... },
+  { name = "nat3", ... }
 ]
 </code></pre>
-
-<h3>Deploy (Multi Pair)</h3>
-<pre><code>cd terraform
-terraform init
-terraform apply -var-file=multi-pair.tfvars -auto-approve
-</code></pre>
-<p><strong>Outputs:</strong> <code>pair_summary</code> shows each pair’s public/VLAN IPs and VIPs.</p>
-<p>✅ Ansible <code>inventory.ini</code> groups will include <code>nat_nat1</code>, <code>nat_nat2</code>, and a parent <code>nat</code>.</p>
-
-<hr />
+<p>Terraform will automatically create three pairs: <code>nat1-a/b</code>, <code>nat2-a/b</code>, and <code>nat3-a/b</code>,  
+along with matching <code>group_vars/nat_nat1.yml</code>, <code>nat_nat2.yml</code>, <code>nat_nat3.yml</code> files and inventory entries.</p>
 
 <h2>🔧 Configure with Ansible</h2>
 <p>Terraform writes files to <code>../ansible</code>:</p>
