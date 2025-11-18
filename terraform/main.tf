@@ -179,7 +179,7 @@ resource "linode_instance" "nat_a" {
   interface {
     purpose      = "vlan"
     label        = var.vlan_label
-    ipam_address = var.nat_a_vlan_ip
+    ipam_address = "${var.nat_a_vlan_ip}/24"    # ← FIXED: Added /24
   }
 
   tags = ["nat", "gateway", "ha", "primary"]
@@ -200,7 +200,7 @@ resource "linode_instance" "nat_b" {
   interface {
     purpose      = "vlan"
     label        = var.vlan_label
-    ipam_address = var.nat_b_vlan_ip
+    ipam_address = "${var.nat_b_vlan_ip}/24"    # ← FIXED: Added /24
   }
 
   tags = ["nat", "gateway", "ha", "backup"]
@@ -238,7 +238,7 @@ resource "linode_instance" "multi" {
   interface {
     purpose      = "vlan"
     label        = each.value.vlan_label
-    ipam_address = each.value.vlan_ip
+    ipam_address = "${each.value.vlan_ip}/24"    # ← FIXED: Added /24
   }
 
   tags = compact(["nat", "gateway", "ha", each.value.state == "MASTER" ? "primary" : "backup"])
