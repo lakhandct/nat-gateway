@@ -83,103 +83,22 @@ locals {
 }
 
 # -----------------------------------------------------------------------------
-# PLACEMENT GROUPS (single-pair)
-# -----------------------------------------------------------------------------
-resource "linode_placement_group" "nat_pg" {
-  count                = local.is_multi ? 0 : (var.placement_group_label == "" ? 1 : 0)
-  label                = "${var.prefix}-placement-group"
-  region               = var.region
-  placement_group_type = var.placement_group_type
-}
-
-data "linode_placement_groups" "by_label" {
-  count = local.is_multi ? 0 : (var.placement_group_label != "" ? 1 : 0)
-
-  filter {
-    name   = "label"
-    values = [var.placement_group_label]
-  }
-
-  filter {
-    name   = "region"
-    values = [var.region]
-  }
-}
-
-locals {
-  placement_group_id = local.is_multi ? null : coalesce(
-    try(data.linode_placement_groups.by_label[0].placement_groups[0].id, null),
-    try(linode_placement_group.nat_pg[0].id, null)
-  )
-}
-
-# -----------------------------------------------------------------------------
-# MULTI-PAIR PLACEMENT GROUPS (per pair)
-# -----------------------------------------------------------------------------
-resource "linode_placement_group" "pg_auto" {
-  for_each = {
-    for pname, p in local.nat_pairs_by_name : pname => p
-    if trimspace(try(p.placement_group_label, "")) == ""
-  }
-
-  label                = "${var.prefix}-${each.key}-placement-group"
-  region               = var.region
-  placement_group_type = try(each.value.placement_group_type, var.placement_group_type)
-}
-
-data "linode_placement_groups" "pg_existing" {
-  for_each = {
-    for pname, p in local.nat_pairs_by_name : pname => p
-    if trimspace(try(p.placement_group_label, "")) != ""
-  }
-
-  filter {
-    name   = "label"
-    values = [try(each.value.placement_group_label, "")]
-  }
-
-  filter {
-    name   = "region"
-    values = [var.region]
-  }
-}
-
-locals {
-  # Per-pair PG IDs: combine auto-created and pre-existing (looked up by label)
-  _pg_by_pair_core = merge(
-    { for k, v in linode_placement_group.pg_auto : k => v.id },
-    { for k, v in data.linode_placement_groups.pg_existing : k => try(v.placement_groups[0].id, null) }
-  )
-
-  # Single-pair fallback PG ID
-
-  # Map pair_name => PG ID (use per-pair if present, else fan out single-pair ID)
-  placement_group_id_by_pair = (
-    length(local._pg_by_pair_core) > 0
-    ? local._pg_by_pair_core
-    : { for pname in local.pair_names : pname => local.placement_group_id }
-  )
-}
-
-
-# -----------------------------------------------------------------------------
 # SINGLE-PAIR MODE INSTANCES
 # -----------------------------------------------------------------------------
 resource "linode_instance" "nat_a" {
-  count                              = local.is_multi ? 0 : 1
-  label                              = "${var.prefix}-a"
-  region                             = var.region
-  image                              = var.image
-  type                               = var.type
-  root_pass                          = var.root_pass != "" ? var.root_pass : null
-  authorized_keys                    = var.inject_ssh_via_cloud_init ? null : var.ssh_authorized_keys
-  placement_group_externally_managed = true
+  count           = local.is_multi ? 0 : 1
+  label           = "${var.prefix}-a"
+  region          = var.region
+  image           = var.image
+  type            = var.type
+  root_pass       = var.root_pass != "" ? var.root_pass : null
+  authorized_keys = var.inject_ssh_via_cloud_init ? null : var.ssh_authorized_keys
 
   interface { purpose = "public" }
   interface {
     purpose      = "vlan"
     label        = var.vlan_label
-    ipam_address = "${var.nat_a_vlan_ip}/24"    # ← FIXED: Added /24
+    ipam_address = "${var.nat_a_vlan_ip}/24"
   }
 
   tags = ["nat", "gateway", "ha", "primary"]
@@ -187,69 +106,46 @@ resource "linode_instance" "nat_a" {
 }
 
 resource "linode_instance" "nat_b" {
-  count                              = local.is_multi ? 0 : 1
-  label                              = "${var.prefix}-b"
-  region                             = var.region
-  image                              = var.image
-  type                               = var.type
-  root_pass                          = var.root_pass != "" ? var.root_pass : null
-  authorized_keys                    = var.inject_ssh_via_cloud_init ? null : var.ssh_authorized_keys
-  placement_group_externally_managed = true
+  count           = local.is_multi ? 0 : 1
+  label           = "${var.prefix}-b"
+  region          = var.region
+  image           = var.image
+  type            = var.type
+  root_pass       = var.root_pass != "" ? var.root_pass : null
+  authorized_keys = var.inject_ssh_via_cloud_init ? null : var.ssh_authorized_keys
 
   interface { purpose = "public" }
   interface {
     purpose      = "vlan"
     label        = var.vlan_label
-    ipam_address = "${var.nat_b_vlan_ip}/24"    # ← FIXED: Added /24
+    ipam_address = "${var.nat_b_vlan_ip}/24"
   }
 
   tags = ["nat", "gateway", "ha", "backup"]
   metadata { user_data = base64encode(local.cloud_init) }
 }
 
-resource "linode_placement_group_assignment" "nat_a_attach" {
-  count              = local.is_multi ? 0 : 1
-  placement_group_id = local.placement_group_id
-  linode_id          = linode_instance.nat_a[0].id
-  depends_on         = [linode_instance.nat_a]
-}
-
-resource "linode_placement_group_assignment" "nat_b_attach" {
-  count              = local.is_multi ? 0 : 1
-  placement_group_id = local.placement_group_id
-  linode_id          = linode_instance.nat_b[0].id
-  depends_on         = [linode_instance.nat_b]
-}
-
 # -----------------------------------------------------------------------------
 # MULTI-PAIR MODE INSTANCES
 # -----------------------------------------------------------------------------
 resource "linode_instance" "multi" {
-  for_each                           = local.is_multi ? { for m in local.members_flat : m.label => m } : {}
-  label                              = each.value.label
-  region                             = var.region
-  image                              = var.image
-  type                               = var.type
-  root_pass                          = var.root_pass != "" ? var.root_pass : null
-  authorized_keys                    = var.inject_ssh_via_cloud_init ? null : var.ssh_authorized_keys
-  placement_group_externally_managed = true
+  for_each        = local.is_multi ? { for m in local.members_flat : m.label => m } : {}
+  label           = each.value.label
+  region          = var.region
+  image           = var.image
+  type            = var.type
+  root_pass       = var.root_pass != "" ? var.root_pass : null
+  authorized_keys = var.inject_ssh_via_cloud_init ? null : var.ssh_authorized_keys
 
   interface { purpose = "public" }
   interface {
     purpose      = "vlan"
     label        = each.value.vlan_label
-    ipam_address = "${each.value.vlan_ip}/24"    # ← FIXED: Added /24
+    ipam_address = "${each.value.vlan_ip}/24"
   }
 
   tags = compact(["nat", "gateway", "ha", each.value.state == "MASTER" ? "primary" : "backup"])
   metadata { user_data = base64encode(local.cloud_init) }
-}
-
-resource "linode_placement_group_assignment" "multi_attach" {
-  for_each           = local.is_multi ? { for m in local.members_flat : m.label => m } : {}
-  placement_group_id = local.placement_group_id_by_pair[local.members_by_label[each.key].pair_name]
-  linode_id          = linode_instance.multi[each.key].id
-  depends_on         = [linode_instance.multi]
 }
 
 # -----------------------------------------------------------------------------
@@ -272,7 +168,7 @@ resource "null_resource" "ip_share_nat_a" {
     EOC
   }
 
-  depends_on = [linode_placement_group_assignment.nat_a_attach]
+  depends_on = [linode_instance.nat_a]
 }
 
 resource "null_resource" "ip_share_nat_b" {
@@ -292,7 +188,7 @@ resource "null_resource" "ip_share_nat_b" {
     EOC
   }
 
-  depends_on = [linode_placement_group_assignment.nat_b_attach]
+  depends_on = [linode_instance.nat_b]
 }
 
 resource "null_resource" "ip_share_multi" {
@@ -475,12 +371,9 @@ resource "local_file" "ansible_inventory_multi" {
 
 # group_vars per pair (multi)
 resource "local_file" "group_vars_per_pair" {
-  # for_each must be a map or set; use an empty set when not multi
   for_each = local.is_multi ? toset(local.pair_names) : toset([])
 
-  filename             = "${path.module}/../ansible/group_vars/nat_${each.key}.yml"
-  file_permission      = "0777"
-  directory_permission = "0777"
+  filename = "${path.module}/../ansible/group_vars/nat_${each.key}.yml"
 
   content = <<-YAML
     # Auto-generated by Terraform. Do not edit by hand.
@@ -489,13 +382,12 @@ resource "local_file" "group_vars_per_pair" {
     vlan_vip: "${try(local.nat_pairs_by_name[each.key].vlan_vip, "")}"
 
     # VRRP parameters
-    # Use explicit vrrp_id from nat_pairs if present; otherwise make a stable fallback
     vrrp_id: ${try(local.nat_pairs_by_name[each.key].vrrp_id, 50 + index(local.pair_names, each.key))}
     vrrp_instance: "VGW1"
     vrrp_interface: "eth1"
     vrrp_auth_pass: "${each.key}-pass"
 
-    # Interfaces (match what Terraform creates on the Linodes)
+    # Interfaces
     pub_if: "eth0"
     vlan_if: "eth1"
   YAML
@@ -505,10 +397,8 @@ resource "local_file" "group_vars_per_pair" {
 
 # nat common group_vars (exists in both modes)
 resource "local_file" "group_vars_nat_common" {
-  filename             = "${path.module}/../ansible/group_vars/nat.yml"
-  file_permission      = "0777"
-  directory_permission = "0777"
-  content              = <<-YAML
+  filename = "${path.module}/../ansible/group_vars/nat.yml"
+  content  = <<-YAML
 # Auto-generated by Terraform. Do not edit by hand.
 dcid: ${var.dcid}
 YAML
@@ -523,7 +413,6 @@ resource "local_file" "hostvars_per_node" {
 vlan_if: eth1
 ct_local_ip: "${local.local_ip_by_label[each.key]}"
 ct_peer_ip:  "${local.peer_ip_by_label[each.key]}"
-# Ansible role expected names (used in conntrackd.conf.j2)
 nat_ha_sync_iface: "${try(var.sync_iface, "eth2")}"
 nat_ha_sync_ip_self: "${local.local_ip_by_label[each.key]}"
 nat_ha_sync_ip_peer: "${local.peer_ip_by_label[each.key]}"
